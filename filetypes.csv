@@ -1,7 +1,17 @@
-FileName,Extension,FileType
-NA,csv, Comma Separated Values
-NA,py, Python file
-NA,exe, Executable
-teamcity-info,xml, Teamcity CI ww file
-Jenkinsfile,NA, Jenkins file
-NA,xml, XML file
+Directory,FileNameandExtension,FileType
+NA,teamcity-info.xml, Teamcity CI ww file
+NA,.gitlab-ci.yml, GitLab yml file
+NA,Jenkinsfile, Jenkins file
+NA,.travis.yml, travis  YAML file
+circleci,config.yml, Circle ci YAML file
+NA,.xml, Generic XML file
+NA,.yml, Generic Yaml file
+NA,.csv, Comma Separated Values
+NA,.py, Python file
+NA,.java, Java file
+NA,.c, C File
+NA,.cpp, C++ file
+NA,.exe, Executable
+NA,.cs, C sharp File
+
+
