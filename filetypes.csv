@@ -1,0 +1,7 @@
+FileName,Extension,FileType
+NA,csv, Comma Separated Values
+NA,py, Python file
+NA,exe, Executable
+teamcity-info,xml, Teamcity CI ww file
+Jenkinsfile,NA, Jenkins file
+NA,xml, XML file
