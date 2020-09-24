@@ -1,17 +1,19 @@
-Directory,FileNameandExtension,FileType
-NA,teamcity-info.xml, Teamcity CI ww file
-NA,.gitlab-ci.yml, GitLab yml file
-NA,Jenkinsfile, Jenkins file
-NA,.travis.yml, travis  YAML file
-circleci,config.yml, Circle ci YAML file
-NA,.xml, Generic XML file
-NA,.yml, Generic Yaml file
-NA,.csv, Comma Separated Values
-NA,.py, Python file
-NA,.java, Java file
-NA,.c, C File
-NA,.cpp, C++ file
-NA,.exe, Executable
-NA,.cs, C sharp File
-
+Directory,FileNameAndExtension,FileType
+NA,teamcity-info.xml,Teamcity CI  file
+NA,.gitlab-ci.yml,GitLab yml file
+NA,Jenkinsfile,Jenkins file
+NA,Dockerfile,Docker file
+NA,.dockerignore,Docker Ignore file
+NA,.travis.yml,travis  YAML file
+.circleci,config.yml,Circle CI YAML file
+.azure-pipelines,linux-conda-CI.yml,Azure pipeline file
+.azure-pipelines,win32-conda-CI.yml,Azure pipeline file
+NA,azure-pipelines.yml,Azure pipeline Yaml file
+NA,.coveralls.yml,Generic pipeline file
+NA,appveyor.yml,Appveyor Yaml file
+NA,.xaml,Generic XML file
+NA,.xml,Generic XML file
+NA,.yml,Generic Yaml file
+NA,.yaml,Generic Yaml file
+NA,.json, Generic JSON file
 
