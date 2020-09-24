@@ -45,7 +45,7 @@ count_dict["unknown"] = 0
 for ext in FileNamesAndExtensions:
     count_dict[ext] = 0
 
-generic_ext = ['.csv', '.py', '.java', '.c', '.cpp', '.exe', '.cs', '.md', '.txt','.html','.ts','.go','.png','.js','.css','.s','.ini','.jpg','.bmp','ipynb','.map','.scss','.gif','.markdown','.pem','.sh','.xaml','.csproj','.onnx','.svg','.lock']
+generic_ext = ['.csv', '.py', '.java', '.c', '.cpp', '.exe', '.cs', '.md', '.txt','.html','.ts','.go','.png','.js','.css','.s','.ini','.jpg','.bmp','ipynb','.map','.scss','.gif','.markdown','.pem','.sh','.xaml','.csproj','.onnx','.svg','.lock','.sln','.pdf','.resx','.tdb','.log','.p','.pbtxt',".xaml",'.tsv','.bmp','.h',".pt",'.pyc']
 ignorder_ext=['.gitignore','README.md','LICENSE',"AUTHORS","CONTRIBUTORS","PATENTS","OWNERS","SECURITY_CONTACTS","NOTICE","Readme",".DS_Store",".gitattributes","CODEOWNERS",".gitkeep",".gitmodules","GOLANG_CONTRIBUTORS"]
 
 for t1ext in generic_ext:

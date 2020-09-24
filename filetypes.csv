@@ -10,9 +10,7 @@ NA,.travis.yml,travis  YAML file
 .azure-pipelines,win32-conda-CI.yml,Azure pipeline file
 NA,azure-pipelines.yml,Azure pipeline Yaml file
 NA,.coveralls.yml,Generic pipeline file
-NA,appveyor.yml,Appveyor Yaml file
-NA,.xaml,Generic XML file
-NA,.xml,Generic XML file
+NA,appveyor.yml,Appveyor Yaml fileNA,.xml,Generic XML file
 NA,.yml,Generic Yaml file
 NA,.yaml,Generic Yaml file
 NA,.json, Generic JSON file
