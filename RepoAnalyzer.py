@@ -18,18 +18,24 @@ HDD = "F:"
 repos_dir = HDD + "\\PhD Work\\repos\\"
 
 output_file = open("output.csv", "wt+")
-output_file.write("Devops file?;Filepath;Devops Type \n")
+output_file.write("Devops file?;Filepath;Devops Type; Devops Tool \n")
+
+unknowns_file = open("unknowns.csv", "wt+")
+unknowns_file.write("Devops file?;Filepath;Devops Type;Devops Tool \n")
 
 # with open("analyzingAIMLprogress.json", 'r+') as outfile:
 #     progress = json.load(outfile)
 #     print(progress)
-with open("filetypes.csv", "r", newline='') as files_list:
-    special_files_dataframe = pandas.read_csv(files_list, delimiter=',')
+
+
+with open("ConfigFiles.xlsx", "rb") as files_list:
+    special_files_dataframe = pandas.read_excel(files_list)
 
 Directories = special_files_dataframe["Directory"].tolist()
-FileNamesAndExtensions = special_files_dataframe["FileNameAndExtension"].tolist()
+FileNamesAndExtensions = special_files_dataframe["Files"].tolist()
 FileNamesAndExtensionsAndDirectories = list(zip(FileNamesAndExtensions, Directories))
-# special_files_dataframe.set_index("FileNameandExtension", inplace=True, drop=False)
+# special_files_dataframe.set_index("Tool", inplace=True, drop=False)
+# print(special_files_dataframe.columns)
 #
 # print(special_files_dataframe)
 
@@ -45,7 +51,7 @@ count_dict["unknown"] = 0
 for ext in FileNamesAndExtensions:
     count_dict[ext] = 0
 
-generic_ext = ['.csv', '.py', '.java', '.c', '.cpp', '.exe', '.cs', '.md', '.txt','.html','.ts','.go','.png','.js','.css','.s','.ini','.jpg','.bmp','ipynb','.map','.scss','.gif','.markdown','.pem','.sh','.xaml','.csproj','.onnx','.svg','.lock','.sln','.pdf','.resx','.tdb','.log','.p','.pbtxt',".xaml",'.tsv','.bmp','.h',".pt",'.pyc']
+generic_ext = ['.csv', '.py', '.java', '.c', '.cpp', '.exe', '.cs', '.md', '.txt','.html','.ts','.go','.png','.js','.css','.s','.ini','.jpg','.bmp','ipynb','.map','.scss','.gif','.markdown','.pem','.sh','.xaml','.csproj','.onnx','.svg','.lock','.sln','.pdf','.resx','.tdb','.log','.p','.pbtxt',".xaml",'.tsv','.bmp','.h',".pt",'.pyc',".xml",'.yaml','.yml']
 ignorder_ext=['.gitignore','README.md','LICENSE',"AUTHORS","CONTRIBUTORS","PATENTS","OWNERS","SECURITY_CONTACTS","NOTICE","Readme",".DS_Store",".gitattributes","CODEOWNERS",".gitkeep",".gitmodules","GOLANG_CONTRIBUTORS"]
 
 for t1ext in generic_ext:
@@ -79,19 +85,20 @@ def test(dirpath, filename):
             if dir !='NA' and dir not in dirpath:
                 continue
 
-        if filename == ext:
-            filetype = str(special_files_dataframe.loc[special_files_dataframe['FileNameAndExtension'] == ext]['FileType'].values).replace('[', '').replace(']', '').replace('\'','')
-            output_file.write("Yes"+';'+dirpath+ '\\' + filename +';'+ filetype + "\n")
+        if ext.lower() in filename.lower():
+            category = str(special_files_dataframe.loc[special_files_dataframe['Files'] == ext]['Category'].values).replace('[', '').replace(']', '').replace('\'','')
+            tool = str(special_files_dataframe.loc[special_files_dataframe['Files'] == ext]['Tool'].values).replace('[', '').replace(']', '').replace('\'','')
+            output_file.write("Yes"+';'+dirpath+ '\\' + filename +';'+ category +';'+ tool + "\n")
             output_file.flush()
             count_dict[ext] += 1
             return
-        elif filename.lower().endswith(ext):
-            filetype = str(special_files_dataframe.loc[special_files_dataframe['FileNameAndExtension'] == ext][
-                               'FileType'].values).replace('[', '').replace(']', '').replace('\'', '')
-            count_dict[ext] += 1
-            output_file.write("Unknown"+';'+dirpath + '\\' + filename +';'+ filetype +"\n")
-            output_file.flush()
-            return
+        # elif filename.lower().endswith(ext):
+        #     filetype = str(special_files_dataframe.loc[special_files_dataframe['FileNameAndExtension'] == ext][
+        #                        'FileType'].values).replace('[', '').replace(']', '').replace('\'', '')
+        #     count_dict[ext] += 1
+        #     output_file.write("Unknown"+';'+dirpath + '\\' + filename +';'+ filetype +"\n")
+        #     output_file.flush()
+        #     return
 
     for gext in generic_ext:
         if filename.lower().endswith(gext):
@@ -99,8 +106,8 @@ def test(dirpath, filename):
             return
 
     count_dict["unknown"] += 1
-    output_file.write("Unknown"+';'+dirpath + '\\'+ filename + ';'+"Unknown file"+"\n")
-    output_file.flush()
+    unknowns_file.write("Unknown"+';'+dirpath + '\\'+ filename + ';'+"Unknown file"+"\n")
+    unknowns_file.flush()
     return
 
 
