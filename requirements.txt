@@ -1,0 +1,16 @@
+numpy==1.20.1
+matplotlib==3.4.1
+pause==0.3
+PyDriller==1.15.5
+stemming==1.0.1
+scipy==1.6.2
+nltk==3.5
+seaborn==0.11.1
+pandas==1.2.2
+requests==2.25.1
+jsonpickle==2.0.0
+beautifulsoup4==4.9.3
+efficient_apriori==1.1.1
+GitPython==3.1.14
+PyGithub==1.55
+python_dateutil==2.8.1
