@@ -130,7 +130,8 @@ def generate_commit_ratio_of_devops_files(i):
     with open("../JSON Files/lastAnalysisForType" + str(i) + ".json", 'r+') as outfile:
         last_buildfiles_fs_analysis = json.load(outfile)
     type=listOfTypes[i]
-    x = datetime.now()
+    x = datetime.datetime.now()
+    # counter=0
     time = x.strftime("%x-%X").replace(":", "-").replace("/", "-")
     output_file = open("../CSV Files/devopsfiles-commit-ratios-" + time + "-" + type + ".csv", "w+", encoding="utf-8")
     output_file.write("ProjectName;CommitRatio\n")
@@ -141,22 +142,35 @@ def generate_commit_ratio_of_devops_files(i):
     devops_fromfs_df=pandas.read_csv(decoder_wrapper,sep=";",error_bad_lines=False,usecols=["ProjectName","FilePath","DevopsType","DevopsTool","Notes"])
     old_projectname = "empty_project"
     devops_commits=set()
-    nbtotalcommits="a"
-    update_nbtotal=False
+    nbtotalcommits="Unk"
+    update_nbtotal=True
+    reached=False
     for index,row in devops_fromfs_df.iterrows():
+        # if counter > 7:
+        #     exit()
         project_name=row["ProjectName"]
         full_path=row["FilePath"]
+        if project_name =='RTradeLtd/Lens':
+            reached=True
+        if not reached:
+            continue
         if(old_projectname=="empty_project"):
             old_projectname=project_name
         elif(old_projectname!=project_name):
             if(nbtotalcommits>0):
+
                 ratio = len(devops_commits) / nbtotalcommits
+                print(len(devops_commits))
+                print(nbtotalcommits)
+                print(ratio)
             else:
                 ratio=0
             ratio_str = "{:1.5f}".format(ratio)
-            output_file.write(project_name  + ";" + ratio_str + " \n")
+            output_file.write(old_projectname  + ";" + ratio_str + " \n")
             old_projectname=project_name
             update_nbtotal=True
+            devops_commits.clear()
+            # counter +=1
         x = project_name.split("/")
         file_with_path = full_path.split(project_name.replace("/","\\"))[1]
         file_with_path=file_with_path[1:]
@@ -168,10 +182,9 @@ def generate_commit_ratio_of_devops_files(i):
             devops_commits.update(commits)
             dates_list = []
             comments_list=[]
-            if(nbtotalcommits=="a" or update_nbtotal==True):
+            if(nbtotalcommits=="Unk" or update_nbtotal==True):
                 nbtotalcommits=int(repo.git.execute("git rev-list HEAD --count"))
                 update_nbtotal=False
-
             # output_file.flush()
             print(repo_path)
         except Exception as e:
@@ -180,14 +193,13 @@ def generate_commit_ratio_of_devops_files(i):
             except Exception  as e1:
                 print("can't record exception :"+e)
                 print("\n because of :"+e1)
-    #output for last project
+    #output for last project`
     if(nbtotalcommits>0):
         ratio = len(devops_commits) / nbtotalcommits
     else:
         ratio=0
     ratio_str = "{:1.5f}".format(ratio)
     output_file.write(old_projectname + ";" + ratio_str + " \n")
-
 
 
 def process_project_commits(projectname,repo_path,devops_files_paths,outfile,outfile2,errfile):

@@ -253,5 +253,5 @@ def get_commit_dates_and_statuses(i):
                 previous_project = ""
         save_progress(i)
 
-get_commit_dates_and_statuses(2)
+# get_commit_dates_and_statuses(2)
 #reset commits statuses to -1

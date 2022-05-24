@@ -13,11 +13,16 @@ import io
 import pandas
 from git import Repo
 from git import Git
+import os
+import stat
+import sys
+import time
+
 
 import numpy as np
 
 listOfTypes=["applied","tool","no-ai-ml"]
-
+Type_i=0
 
 def intersection(lst1, lst2):
     # Use of hybrid method
@@ -51,9 +56,11 @@ def is_commit_comment_bugfix(comment):
         return False
 
 
-df_loaded = False
-df=""
-i_df=-1
+# df_loaded = False
+# df=""
+# i_df=-1
+
+
 def load_df(i):
     global df_loaded
     global df
@@ -68,22 +75,30 @@ def load_df(i):
         df_loaded = True
         type = listOfTypes[i]
         df=pandas.read_csv("../CSV Files/commits-statuses-" + type + "-2.csv", sep=';', encoding="utf-8")
+        print("../CSV Files/commits-statuses-" + type + "-2.csv")
         return df
 
-#TODO test this
-def is_commit_build_fix(i,oid,projectname):
-    dataframe=load_df(i)
+
+
+def is_commit_build_fix(df,i,oid,projectname):
+    print('processing')
+    dataframe=df
     # dataframe.iterrows()
     rows = dataframe.loc[dataframe['ProjectName'] == projectname]
-    current_commit= dataframe.loc[ (dataframe['ProjectName'] == projectname )&  (dataframe['CommitOID'] == oid) ]
+    current_commit= dataframe.loc[ (dataframe['ProjectName'] == projectname )& (dataframe['CommitOID'] == oid) ]
     stats=current_commit["CommitStatus"].to_list()
-    if(stats== "FAILURE"):
+    if(len(stats)==0):
         return False
+        # return False
+    if(stats[0]== "FAILURE"):
+        return False
+    prev_failure=False
     for index,row in rows.iterrows():
         if(row["CommitStatus"]=="SUCCESS" and row['CommitOID'] != oid):
-            return False
-        elif (row["CommitStatus"]=="FAILURE"):
-            # print("BuildFix")
+            prev_failure=False
+        elif (row["CommitStatus"]=="FAILURE"and row['CommitOID'] != oid):
+            prev_failure=True
+        if (row["CommitStatus"] == "SUCCESS" and row['CommitOID'] == oid and prev_failure):
             return True
     return False
 
@@ -107,18 +122,53 @@ def save_progress(progress,i):
         return
 
 
+class commit_analyzer():
+    def __init__(self,project_name,oid,msg,date,repo):
+        self.project_name=project_name
+        self.oid=oid
+        self.msg=msg
+        self.date=date
+        self.repo=repo
+        self.files=''
+
+    def analyze_commit(self):
+        try:
+            global Type_i
+            print('processing: '+str(self.oid))
+            self.files=self.repo.git.execute("git diff-tree --no-commit-id --name-only -r "+str(self.oid))
+            build_fix = is_commit_build_fix(Type_i, self.oid, self.project_name)
+            bug_fix = is_commit_comment_bugfix(self.msg)
+            code_improvment = not build_fix and not bug_fix
+            str_1=self.project_name + ";" + str(self.oid) + ";" + str(self.date) + ";" + str(build_fix) + ";" + str(bug_fix) + ";" + str(
+                    code_improvment) + "\n"
+            str_2=self.project_name + ";" + str(self.oid) + ";" + str(self.date) + ";" + str(self.msg).replace(";", "--").replace("\n", " ") + ";" + str(
+                    build_fix) + ";" + str(bug_fix) + ";" + str(code_improvment) + "\n"
+            str_3=self.project_name + ";" + str(self.oid) + ";" + str(self.date) + ";" + str(self.files).replace("\n", "==") + ";" + str(
+                    build_fix) + ";" + str(bug_fix) + ";" + str(code_improvment) + "\n"
+            return (str_1,str_2,str_3)
+        except Exception as e:
+            return ('Exception',self.project_name,str(e))
 
 
 
 
 
+import multiprocessing as mp
+NUM_CORE = 8
+import time
+
+def worker(arg):
+    obj = arg
+    return obj.analyze_commit()
+
+build_files=['../CSV Files/devopsfiles-10-13-21-10-47-16-applied.csv','../CSV Files/devopsfiles-10-13-21-10-47-16-tool.csv','../CSV Files/devopsfiles-10-13-21-16-55-32-no-ai-ml.csv']
 def analyze_past_git_commits(i):
+    global Type_i
     progress=get_progress(i)
     counter=-1
-    # with open("../JSON Files/lastAnalysisForType" + str(i) + ".json", 'r+') as outfile:
-    #     last_buildfiles_fs_analysis = json.load(outfile)
-    last_buildfiles_fs_analysis="../CSV Files/IntersectionDevOpsFS-Applied.csv"
+    last_buildfiles_fs_analysis=build_files[i]
     type = listOfTypes[i]
+    Type_i=i
     x = datetime.now()
     time = x.strftime("%x-%X").replace(":", "-").replace("/", "-")
     output_file = open("../CSV Files/commit-types-" + time + "-" + type + ".csv", "a+", encoding="utf-8")
@@ -132,11 +182,16 @@ def analyze_past_git_commits(i):
     error_file.write("ProjectName;Exception\n")
     buildfiles_infs_file = open(last_buildfiles_fs_analysis, "rb")
     decoder_wrapper = io.TextIOWrapper(buildfiles_infs_file, encoding='utf-8', errors='ignore')
-    devops_fromfs_df = pandas.read_csv(decoder_wrapper, sep=",", error_bad_lines=False,
-                                       usecols=["ProjectName", "FilePath"])
+    devops_fromfs_df = pandas.read_csv(decoder_wrapper, sep=";", error_bad_lines=False
+                                       )
     oldprojectname = ""
+    reached=False
     for index, row in devops_fromfs_df.iterrows():
         project_name = row["ProjectName"]
+        if (not reached) and project_name != 'aosp-mirror/platform_development':
+            continue
+        else:
+            reached=True
         if(project_name==oldprojectname):
             continue
         else:
@@ -144,6 +199,8 @@ def analyze_past_git_commits(i):
         oldprojectname = project_name
         print(project_name)
         print(counter)
+        # if counter > 2:
+        #     exit()
         if(counter<=progress):
             continue
         full_path = row["FilePath"]
@@ -154,42 +211,31 @@ def analyze_past_git_commits(i):
         try:
             repo = Repo(repo_path)
             commits=list(repo.iter_commits("master"))
-            for commit in commits:
-                oid=commit.hexsha
-                msg=commit.message
-                date=commit.committed_datetime
-                files = repo.git.execute("git diff-tree --no-commit-id --name-only -r "+str(oid))
-                # print(str(date))
-                build_fix=is_commit_build_fix(i,oid,project_name)
-                bug_fix=is_commit_comment_bugfix(msg)
-                code_improvment=not build_fix and not bug_fix
-                output_file.write(project_name+";"+str(oid)+";"+str(date)+";"+str(build_fix)+";"+str(bug_fix)+";"+str(code_improvment)+"\n")
-                output_file2.write(project_name+";"+str(oid)+";"+str(date)+";"+str(msg).replace(";","--").replace("\n"," ")+";"+str(build_fix)+";"+str(bug_fix)+";"+str(code_improvment)+"\n")
-                output_file3.write(project_name+";"+str(oid)+";"+str(date)+";"+str(files).replace("\n","==")+";"+str(build_fix)+";"+str(bug_fix)+";"+str(code_improvment)+"\n")
-                save_progress(counter,i)
+            list_of_objects = [commit_analyzer(project_name,commit.hexsha,commit.message,commit.committed_datetime, repo) for commit in
+                               commits]
+            pool = mp.Pool(NUM_CORE)
+            #     # doing in order. first 8000 done, run in segments of 1000
+            list_of_results = pool.map(worker, ((obj) for obj in list_of_objects)) #500, 1000
+            pool.close()
+            pool.join()
+            for res in list_of_results:
+                if res[0]==Exception:
+                    error_file.write(res[1]+';'+res[2])
+                else:
+                    output_file.write(res[0])
+                    output_file2.write(res[1])
+                    output_file3.write(res[2])
+            save_progress(counter,i)
+
         except Exception as e:
             try:
                 error_file.write(project_name+";"+str(e))
             except:
                 print(e)
 
-#TODO RUn these
 
 
-# print ("Start 1 date and time : ")
-# now = datetime.now()
-# print (now.strftime("%Y-%m-%d %H:%M:%S"))
-# analyze_past_git_commits(1)
-#applied
-# now = datetime.now()
-# print ("Start 0 date and time : ")
-# print (now.strftime("%Y-%m-%d %H:%M:%S"))
-# analyze_past_git_commits(0)
-# now = datetime.now()
-# print ("Start 2 date and time : ")
-# print (now.strftime("%Y-%m-%d %H:%M:%S"))
-# analyze_past_git_commits(2)
-#
+
 
 with open("..\\Excel Files\ConfigFiles_all.xlsx","rb") as configFile:
     special_files_dataframe=pandas.read_excel(configFile)
@@ -221,13 +267,22 @@ def is_devops_file(filepath):
                 continue
         if(len(ext) <= 6):
             if filename.lower().endswith(ext.lower()):
+                print(ext.lower())
                 return True
         else:
             if '*' == ext :
-               return True
+                print(ext.lower())
+                return True
             elif '*' in ext :
-               return True
+                arr=ext.split('*')
+                file=arr[0]
+                ext_a=arr[1]
+                if file.lower().split('.')[0] in filename.lower() and  file.lower().split('.')[1] == ext_a:
+                    return True
+                else:
+                    return False
             elif filename.lower() == ext.lower() or "."+filename.lower() == ext.lower() or filename.lower() == "."+ext.lower():
+                print(ext.lower())
                 return True
     return False
 
@@ -238,27 +293,22 @@ def getDevopsCommits(i):
     x = datetime.now()
     time = x.strftime("%x-%X").replace(":", "-").replace("/", "-")
 
-    commit_files_old_lists=["../CSV Files/commit-types-files-12-09-20-21-54-39-applied.csv","../CSV Files/commit-types-files-12-09-20-09-41-56-tool.csv","../CSV Files/commit-types-files-12-11-20-08-02-01-no-ai-ml.csv"]
-    commit_files_new_lists=["../CSV Files/commit-types-files-12-31-20-11-01-20-applied.csv","../CSV Files/commit-types-files-12-31-20-11-01-36-tool.csv","../CSV Files/commit-types-files-12-31-20-11-31-37-no-ai-ml.csv"]
+    commit_files_lists=["../CSV Inputs/commit-types-files-11-08-21-19-28-23-applied.csv","../CSV Inputs/commit-types-files-11-16-21-13-25-59-tool.csv","../CSV Inputs/commit-types-files-11-27-21-11-14-44-no-ai-ml.csv"]
+    # commit_files_new_lists=["../CSV Files/commit-types-files-12-31-20-11-01-20-applied.csv","../CSV Files/commit-types-files-12-31-20-11-01-36-tool.csv","../CSV Files/commit-types-files-12-31-20-11-31-37-no-ai-ml.csv"]
 
-    commits_old_file=commit_files_old_lists[i]
-    commits_new_file=commit_files_new_lists[i]
+    # commits_old_file=commit_files_old_lists[i]
+    # commits_new_file=commit_files_new_lists[i]000
 
-    commits_new_file_pd = pandas.read_csv(commits_new_file, sep=';', encoding="utf-8", error_bad_lines=False)
-    commits_old_file_pd = pandas.read_csv(commits_old_file, sep=';', encoding="utf-8", error_bad_lines=False)
-
-    commits_file_pd=commits_old_file_pd.append(commits_new_file_pd,ignore_index=True)
-
-    if(i ==1 ):
-        temp_pd=  pandas.read_csv("../CSV Files/commit-types-files-12-08-20-05-37-34-tool.csv", sep=';', encoding="utf-8", error_bad_lines="ignore")
-        commits_file_pd=temp_pd.append(commits_file_pd,ignore_index=True)
+    # commits_new_file_pd = pandas.read_csv(commits_new_file, sep=';', encoding="utf-8", error_bad_lines=False)
+    commits_file_pd = pandas.read_csv(commit_files_lists[i], sep=';', encoding="utf-8", error_bad_lines=False)
+    # if(i ==1 ):
+    #     temp_pd=  pandas.read_csv("../CSV Files/commit-types-files-12-08-20-05-37-34-tool.csv", sep=';', encoding="utf-8", error_bad_lines="ignore")
+    #     commits_file_pd=temp_pd.append(commits_file_pd,ignore_index=True)
     output_file = open("../CSV Files/devsonly_commit-types-files-" + time + "-" + type + ".csv", "a+", encoding="utf-8")
     output_file.write("ProjectName;CommitOID;CommitDateAndTime;CommitFiles;IsBuildFix;IsBugFix;IsCodeImprovement\n")
-
     error_file = open("../CSV Files/devsonly_commit-types-errors-" + time + "-" + type + ".csv", "a+",
                       encoding="utf-8")
     error_file.write("ProjectName;Exception\n")
-
 
     for (_,projectname,commitoid,commitdt,commitfiles,buildfix,bugfix,codeimprov) in commits_file_pd.itertuples():
         if not isinstance(commitfiles, str):
@@ -274,14 +324,14 @@ def getDevopsCommits(i):
                 break
 
 
-getDevopsCommits(2)
+# getDevopsCommits(2)
 
 
 def reclassify_commits(i):
     type = listOfTypes[i]
     x = datetime.now()
     time = x.strftime("%x-%X").replace(":", "-").replace("/", "-")
-    commits_files_list=["../CSV Files/devsonly_commit-types-files-01-03-21-17-22-19-applied.csv","../CSV Files/devsonly_commit-types-files-01-03-21-17-23-01-tool.csv","../CSV Files/devsonly_commit-types-files-01-03-21-17-23-24-no-ai-ml.csv"]
+    commits_files_list=["../CSV Files/devsonly_commit-types-files-11-29-21-11-47-29-applied.csv","../CSV Files/devsonly_commit-types-files-11-29-21-11-47-42-tool.csv","../CSV Files/devsonly_commit-types-files-11-29-21-11-48-02-no-ai-ml.csv"]
     output_file = open("../CSV Files/devsonly_reclassified_commit-types-files-" + time + "-" + type + ".csv", "a+", encoding="utf-8")
     output_file.write("ProjectName;CommitOID;CommitDateAndTime;CommitFiles;IsBuildANDBugFix;IsOnlyBuildFix;IsOnlyBugFix;IsCodeImprovement\n")
 
@@ -303,4 +353,32 @@ def reclassify_commits(i):
         only_bugfix= bool_bugfix and (not bool_buildfix)
         output_file.write(projectname + ";" + str(commitoid) + ";" + str(commitdt) + ";" + str(commitfiles) +  ";" + str(both)+ ";" + str(only_buildfix) + ";" + str(only_bugfix) + ";" + str(codeimprov) + "\n")
 
-reclassify_commits(2)
+# reclassify_commits(2)
+if __name__ == "__main__":
+    now = datetime.now()
+    # getDevopsCommits(0)
+    # getDevopsCommits(1)
+    # getDevopsCommits(2)
+    # print ("Start 0 date and time : ")
+    # print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    # analyze_past_git_commits(0)
+    # exit()
+
+    # print ("Start 1 date and time : ")
+    # now = datetime.now()
+    # print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    #applied
+    # analyze_past_git_commits(1)
+    # now = datetime.now()
+    # print ("Start 2 date and time : ")
+    # print (now.strftime("%Y-%m-%d %H:%M:%S"))
+    #
+    # analyze_past_git_commits(2)
+    # reclassify_commits(0)
+    # reclassify_commits(1)
+    # reclassify_commits(2)
+    arr_files = str("source/README.md==source/planetary/doc.go==source/planetary/extract.go==source/planetary/extract_test.go==source/planetary/utils.go==v2.go==xtractor/README.md==xtractor/planetary/doc.go==xtractor/planetary/service.go==xtractor/planetary/service_test.go==xtractor/planetary/utils.go").split("==")
+    for file in arr_files:
+        if is_devops_file(file):
+            print(file)
+

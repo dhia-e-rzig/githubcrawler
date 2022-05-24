@@ -86,7 +86,7 @@ def generate_devopsfiles_modification_dates(i):
     decoder_wrapper = io.TextIOWrapper(buildfiles_infs_file, encoding='utf-8', errors='ignore')
     devops_fromfs_df = pandas.read_csv(decoder_wrapper, sep=";", error_bad_lines=False,
                                        usecols=["ProjectName", "FilePath", "DevopsType", "DevopsTool", "Notes"])
-    for index, row in devops_fromfs_df.iterrows():
+for index, row in devops_fromfs_df.iterrows():
         project_name = row["ProjectName"]
         full_path = row["FilePath"]
         x = project_name.split("/")
